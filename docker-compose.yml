@@ -1,0 +1,48 @@
+# Docker Compose para desenvolvimento local
+# Para usar no Easypanel, use apenas o Dockerfile
+
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - DATABASE_URL=${DATABASE_URL}
+      - BREVO_API_KEY=${BREVO_API_KEY}
+      - LXPAY_API_KEY=${LXPAY_API_KEY}
+      - LXPAY_API_SECRET=${LXPAY_API_SECRET}
+      - JWT_SECRET=${JWT_SECRET}
+      - VITE_APP_URL=${VITE_APP_URL}
+    depends_on:
+      - db
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  db:
+    image: mysql:8.0
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-rootpassword}
+      - MYSQL_DATABASE=andreia_molina
+      - MYSQL_USER=andreia
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD:-andreia123}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    restart: unless-stopped
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  mysql-data:

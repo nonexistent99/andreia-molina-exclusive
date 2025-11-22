@@ -1,0 +1,1 @@
+ALTER TABLE `orderBumps` ADD `deliveryDescription` text;

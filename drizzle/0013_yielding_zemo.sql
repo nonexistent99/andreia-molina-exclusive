@@ -1,0 +1,1 @@
+ALTER TABLE `orders` ADD `customerDocument` varchar(14);

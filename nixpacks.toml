@@ -1,0 +1,20 @@
+# ============================
+# NIXPACKS CONFIGURAÇÃO COMPLETA
+# ============================
+
+[phases.setup]
+apt_packages = ["bash"]
+
+[phases.install]
+cmds = [
+  "npm install"
+]
+
+[phases.build]
+cmds = [
+  "bash ./prepare.sh",
+  "npm run build"
+]
+
+[start]
+cmd = "npm start"

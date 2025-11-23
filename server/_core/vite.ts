@@ -3,11 +3,8 @@ import fs from "fs";
 import path from "path";
 
 
-export async function setupVite(app: Express, server: Server) {
-  const serverOptions = {
-    middlewareMode: true,
-    hmr: { server },
-    allowedHosts: true as const,
+export function serveStatic(app: Express) {
+  const distPath = path.resolve(import.meta.dirname, "../..", "dist", "public");
   };
 
   const vite = await createViteServer({

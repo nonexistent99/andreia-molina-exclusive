@@ -2,8 +2,9 @@ import express, { type Express } from "express";
 import fs from "fs";
 import path from "path";
 
-export function serveStatic(app: Express) {
-  const distPath = path.resolve(import.meta.dirname, "../..", "dist", "public");
+const distPath = process.env.NODE_ENV === "production"
+  ? "/workspace/dist/public"
+  : path.resolve(import.meta.dirname, "../..", "dist", "public");
   
   if (!fs.existsSync(distPath)) {
     console.error(

@@ -5,7 +5,7 @@ import net from "net";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
-import { serveStatic, setupVite } from "./vite";
+import { serveStatic } from "./vite";
 import webhookRouter from "../webhook";
 import adminRouter from "../admin-routes";
 import modelCrudRouter from "../model-crud-routes";

@@ -105,3 +105,4 @@ temp/
 *.db
 *.sqlite
 *.sqlite3
+client/public/assets/hero-video.mp4

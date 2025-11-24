@@ -1,29 +1,44 @@
-import express, { type Express } from "express";
-import fs from "fs";
+//import { jsxLocPlugin } from "";
+import tailwindcss from "@tailwindcss/vite";
+import react from "@vitejs/plugin-react";
+import fs from "node:fs";
 import path from "path";
+import { defineConfig } from "vite";
+import { vitePluginManusRuntime } from "vite-plugin-manus-runtime";
 
-export function serveStatic(app: Express) {
-  const distPath = process.env.NODE_ENV === "production"
-    ? "/workspace/dist/public"
-    : path.resolve(import.meta.dirname, "../..", "dist", "public");
-  
-  if (!fs.existsSync(distPath)) {
-    console.error(
-      `Could not find the build directory: ${distPath}, make sure to build the client first`
-    );
-  }
 
-  app.use(express.static(distPath));
+const plugins = [react(), tailwindcss(), vitePluginManusRuntime()];
 
-  app.use("*", (_req, res) => {
-    const indexPath = path.resolve(distPath, "index.html");
-    let html = fs.readFileSync(indexPath, "utf-8");
-    
-    // Substituir variáveis de ambiente
-    html = html.replace(/%VITE_APP_LOGO%/g, process.env.VITE_APP_LOGO || "");
-    html = html.replace(/%VITE_APP_TITLE%/g, process.env.VITE_APP_TITLE || "");
-    
-    res.set("Content-Type", "text/html").send(html);
-  });
-}
-
+export default defineConfig({
+  plugins,
+  resolve: {
+    alias: {
+      "@": path.resolve(import.meta.dirname, "client", "src"),
+      "@shared": path.resolve(import.meta.dirname, "shared"),
+      "@assets": path.resolve(import.meta.dirname, "attached_assets"),
+    },
+  },
+  envDir: path.resolve(import.meta.dirname),
+  root: path.resolve(import.meta.dirname, "client"),
+  publicDir: path.resolve(import.meta.dirname, "client", "public"),
+  build: {
+    outDir: path.resolve(import.meta.dirname, "dist/public"),
+    emptyOutDir: true,
+  },
+  server: {
+    host: true,
+    allowedHosts: [
+      ".manuspre.computer",
+      ".manus.computer",
+      ".manus-asia.computer",
+      ".manuscomputer.ai",
+      ".manusvm.computer",
+      "localhost",
+      "127.0.0.1",
+    ],
+    fs: {
+      strict: true,
+      deny: ["**/.*"],
+    },
+  },
+});

@@ -207,16 +207,16 @@ export const appRouter = router({
           };
         }
 
-        // Criar cobrança Pix
-        const pixCharge = await lxpay.createPixCharge({
-          amount: order.amountInCents / 100, // Converter centavos para reais
-          customerName: order.customerName,
-          customerEmail: order.customerEmail,
-          customerPhone: order.customerPhone || undefined,
-          customerDocument: order.customerDocument || undefined,
-          orderId: order.orderNumber,
-          description: `Compra: ${product.name}`,
-        });
+       const pixCharge = await lxpay.createPixCharge({
+         amount: order.amountInCents,  // ✅ CORRETO: Enviar em centavos
+         customerName: order.customerName,
+         customerEmail: order.customerEmail,
+         customerPhone: order.customerPhone || undefined,
+         customerDocument: order.customerDocument || undefined,
+         orderId: order.orderNumber,
+         description: `Compra: ${product.name}`,
+      }));
+
 
         // Salvar transação no banco
         const expiresAt = new Date();
@@ -226,7 +226,7 @@ export const appRouter = router({
           orderId: order.id,
           transactionId: pixCharge.transactionId,
           pixCode: pixCharge.pixCode,
-          pixQrCode: pixCharge.pixQrCode,
+          pixQrCode: pixCharge.pix?.code || pixCharge.pixQrCode || "", 
           status: "pending",
           amountInCents: order.amountInCents,
           expiresAt,

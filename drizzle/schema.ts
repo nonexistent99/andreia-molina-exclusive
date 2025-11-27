@@ -197,3 +197,16 @@ export const orderBumps = mysqlTable("orderBumps", {
 
 export type OrderBump = typeof orderBumps.$inferSelect;
 export type InsertOrderBump = typeof orderBumps.$inferInsert;
+
+// ** Nova Tabela para Múltiplos Order Bumps (Relacionamento N:M) **
+export const orderOrderBumps = mysqlTable("orderOrderBumps", {
+  orderId: int("orderId")
+    .references(() => orders.id)
+    .notNull(),
+  orderBumpId: int("orderBumpId")
+    .references(() => orderBumps.id)
+    .notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (t) => ({
+  pk: primaryKey({ columns: [t.orderId, t.orderBumpId] }),
+}));

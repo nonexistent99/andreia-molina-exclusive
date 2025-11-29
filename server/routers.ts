@@ -215,7 +215,7 @@ export const appRouter = router({
          customerDocument: order.customerDocument || undefined,
          orderId: order.orderNumber,
          description: `Compra: ${product.name}`,
-      }));
+      });
 
 
         // Salvar transação no banco

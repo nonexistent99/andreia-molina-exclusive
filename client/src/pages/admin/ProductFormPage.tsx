@@ -29,8 +29,9 @@ export default function ProductFormPage() {
     isFeatured: false,
     isActive: true,
   });
-  const [features, setFeatures] = useState<string[]>([""]);
-  const [allOrderBumps, setAllOrderBumps] = useState<any[]>([]);
+const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+};
 
   useEffect(() => {
     loadOrderBumps();

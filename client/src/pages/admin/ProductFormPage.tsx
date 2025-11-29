@@ -286,22 +286,15 @@ export default function ProductFormPage() {
                   />
                 )}
                 <div className="flex-1">
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageUpload}
-                    className="hidden"
+                
+                <Input
+                  label="URL da Imagem do Pacote"
+                  name="imageUrl"
+                  value={formData.imageUrl}
+                  onChange={handleChange}
+                  placeholder="https://exemplo.com/sua-imagem.jpg"
                   />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={uploading}
-                  >
-                    <Upload className="w-4 h-4 mr-2" />
-                    {uploading ? "Enviando..." : formData.imageUrl ? "Trocar Imagem" : "Enviar Imagem"}
-                  </Button>
+
                   <p className="text-xs text-muted-foreground mt-2">
                     Máximo 10MB. Formatos: JPG, PNG, WEBP
                   </p>

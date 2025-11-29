@@ -19,6 +19,7 @@ export default function ProductFormPage() {
   const [loading, setLoading] = useState(isEdit);
   const [uploading, setUploading] = useState(false);
 const [features, setFeatures] = useState<string[]>([]);
+const [allOrderBumps, setAllOrderBumps] = useState<any[]>([]);
   const [formData, setFormData] = useState({
     name: "",
     description: "",

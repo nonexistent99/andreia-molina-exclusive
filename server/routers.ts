@@ -115,6 +115,35 @@ export const appRouter = router({
         return await db.getOrderByNumber(input.orderNumber);
       }),
   }),
+    success: publicProcedure
+      .input(z.object({ orderNumber: z.string() }))
+      .query(async ({ input }) => {
+        const order = await db.getOrderByNumber(input.orderNumber);
+        if (!order) throw new Error("Pedido não encontrado");
+
+        const product = await db.getProductById(order.productId);
+        if (!product) throw new Error("Produto não encontrado");
+
+        // Busca o link de download do produto principal
+        const productDownloadLink = await db.getDownloadLinkByOrderId(order.id, order.productId);
+
+        // Lógica para Order Bump (assumindo que o sistema ainda só suporta 1)
+        let orderBumpDownloadLink = null;
+        let orderBumpProduct = null;
+        if (order.orderBumpId) {
+          orderBumpProduct = await db.getProductById(order.orderBumpId);
+          orderBumpDownloadLink = await db.getDownloadLinkByOrderId(order.id, order.orderBumpId);
+        }
+
+        return {
+          productName: product.name,
+          productAccessLink: productDownloadLink?.accessLink || null,
+          orderBumpName: orderBumpProduct?.name || null,
+          orderBumpAccessLink: orderBumpDownloadLink?.accessLink || null,
+          hasOrderBump: !!order.orderBumpId,
+        };
+      }),
+
 
   downloads: router({
     validate: publicProcedure

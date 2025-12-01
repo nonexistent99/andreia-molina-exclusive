@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useLocation, useParams } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { ArrowLeft, Plus, Trash2, Upload } from "lucide-react";
+import { ArrowLeft, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 export default function ProductFormPage() {
@@ -16,9 +16,8 @@ export default function ProductFormPage() {
   const isEdit = productId !== null;
 
   const [loading, setLoading] = useState(isEdit);
-  const [uploading, setUploading] = useState(false);
-const [features, setFeatures] = useState<string[]>([]);
-const [allOrderBumps, setAllOrderBumps] = useState<any[]>([]);
+  const [features, setFeatures] = useState<string[]>([]);
+  const [allOrderBumps, setAllOrderBumps] = useState<any[]>([]);
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -26,13 +25,14 @@ const [allOrderBumps, setAllOrderBumps] = useState<any[]>([]);
     originalPriceInCents: "",
     imageUrl: "",
     accessLink: "",
-    orderBumpId: null as number | null,
+    orderBumpIds: [] as number[], // Corrigido para múltiplos Order Bumps
     isFeatured: false,
     isActive: true,
   });
-const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-  setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
-};
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  };
 
   useEffect(() => {
     loadOrderBumps();
@@ -56,7 +56,7 @@ const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
           : "",
         imageUrl: product.imageUrl || "",
         accessLink: product.accessLink || "",
-        orderBumpId: product.orderBumpId || null,
+        orderBumpIds: product.orderBumpIds || [], // Corrigido para múltiplos Order Bumps
         isFeatured: product.isFeatured,
         isActive: product.isActive,
       });
@@ -90,7 +90,6 @@ const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     }
   };
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
   const handleFeatureChange = (index: number, value: string) => {
     const newFeatures = [...features];
     newFeatures[index] = value;
@@ -130,7 +129,9 @@ const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         ? Math.round(parseFloat(formData.originalPriceInCents) * 100)
         : null,
       imageUrl: formData.imageUrl || null,
+      accessLink: formData.accessLink || null, // Adicionado accessLink ao payload
       features: validFeatures,
+      orderBumpIds: formData.orderBumpIds, // Corrigido para múltiplos Order Bumps
       isFeatured: formData.isFeatured,
       isActive: formData.isActive,
     };
@@ -191,8 +192,9 @@ const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
               <Label htmlFor="name">Nome do Pacote *</Label>
               <Input
                 id="name"
+                name="name"
                 value={formData.name}
-                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                onChange={handleChange}
                 placeholder="Ex: Pacote Premium"
                 required
               />
@@ -203,8 +205,9 @@ const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
               <Label htmlFor="description">Descrição *</Label>
               <Textarea
                 id="description"
+                name="description"
                 value={formData.description}
-                onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                onChange={handleChange}
                 placeholder="Descreva o que está incluído neste pacote"
                 rows={3}
                 required
@@ -214,27 +217,29 @@ const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
             {/* Preços */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="price">Preço Atual (R$) *</Label>
+                <Label htmlFor="priceInCents">Preço Atual (R$) *</Label>
                 <Input
-                  id="price"
+                  id="priceInCents"
+                  name="priceInCents"
                   type="number"
                   step="0.01"
                   min="0"
                   value={formData.priceInCents}
-                  onChange={(e) => setFormData(prev => ({ ...prev, priceInCents: e.target.value }))}
+                  onChange={handleChange}
                   placeholder="99.00"
                   required
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="originalPrice">Preço Original (R$)</Label>
+                <Label htmlFor="originalPriceInCents">Preço Original (R$)</Label>
                 <Input
-                  id="originalPrice"
+                  id="originalPriceInCents"
+                  name="originalPriceInCents"
                   type="number"
                   step="0.01"
                   min="0"
                   value={formData.originalPriceInCents}
-                  onChange={(e) => setFormData(prev => ({ ...prev, originalPriceInCents: e.target.value }))}
+                  onChange={handleChange}
                   placeholder="199.00"
                 />
                 <p className="text-xs text-muted-foreground">
@@ -243,9 +248,9 @@ const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
               </div>
             </div>
 
-            {/* Imagem */}
+            {/* Imagem (URL) */}
             <div className="space-y-2">
-              <Label>Imagem do Pacote</Label>
+              <Label htmlFor="imageUrl">URL da Imagem do Pacote</Label>
               <div className="flex gap-4 items-start">
                 {formData.imageUrl && (
                   <img
@@ -255,17 +260,15 @@ const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
                   />
                 )}
                 <div className="flex-1">
-                
-                <Input
-                  label="URL da Imagem do Pacote"
-                  name="imageUrl"
-                  value={formData.imageUrl}
-                  onChange={handleChange}
-                  placeholder="https://exemplo.com/sua-imagem.jpg"
+                  <Input
+                    id="imageUrl"
+                    name="imageUrl"
+                    value={formData.imageUrl}
+                    onChange={handleChange}
+                    placeholder="https://exemplo.com/sua-imagem.jpg"
                   />
-
                   <p className="text-xs text-muted-foreground mt-2">
-                    Máximo 10MB. Formatos: JPG, PNG, WEBP
+                    Use uma URL para a imagem do pacote.
                   </p>
                 </div>
               </div>
@@ -273,11 +276,13 @@ const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 
             {/* Link de Acesso */}
             <div className="space-y-2">
-              <Label>Link de Acesso ao Conteúdo</Label>
+              <Label htmlFor="accessLink">Link de Acesso ao Conteúdo</Label>
               <Input
+                id="accessLink"
+                name="accessLink"
                 placeholder="https://drive.google.com/... ou https://t.me/..."
                 value={formData.accessLink}
-                onChange={(e) => setFormData({ ...formData, accessLink: e.target.value })}
+                onChange={handleChange}
               />
               <p className="text-xs text-muted-foreground">
                 Link para onde o cliente será redirecionado após o pagamento confirmado
@@ -288,7 +293,7 @@ const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
             <div className="space-y-2">
               <Label>Características do Pacote *</Label>
               <div className="space-y-2">
-                {features.map((feature, index) => (
+                {features.map((feature, index ) => (
                   <div key={index} className="flex gap-2">
                     <Input
                       value={feature}
@@ -319,43 +324,9 @@ const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
               </Button>
             </div>
 
-            {/* Switches */}
+            {/* Switches e Order Bumps */}
             <div className="space-y-4">
-              {/* Order Bump */}
-              <div className="space-y-2">
-                <Label htmlFor="orderBumpId">Order Bump (opcional)</Label>
-                <p className="text-sm text-muted-foreground">
-                  Selecione um order bump para exibir no checkout deste pacote
-                </p>
-                <select
-                  id="orderBumpId"
-                  value={formData.orderBumpId || ""}
-                  onChange={(e) => setFormData(prev => ({ ...prev, orderBumpId: e.target.value ? parseInt(e.target.value) : null }))}
-                  className="w-full px-3 py-2 border rounded-md"
-                >
-                  <option value="">Nenhum order bump</option>
-                  {allOrderBumps.filter(ob => ob.isActive).map((orderBump) => (
-                    <option key={orderBump.id} value={orderBump.id}>
-                      {orderBump.name} - R$ {(orderBump.priceInCents / 100).toFixed(2).replace(".", ",")}
-                    </option>
-                  ))}
-                </select>
-                {allOrderBumps.length === 0 && (
-                  <p className="text-xs text-muted-foreground">
-                    Nenhum order bump cadastrado. <a href="/admin/order-bumps/new" className="text-primary underline">Criar order bump</a>
-                  </p>
-                )}
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label htmlFor="featured">Marcar como Destaque</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Exibe badge "Mais Vendido"
-                  </p>
-                </div>
-                <Switch
-                           {/* Order Bumps (Múltiplos) */}
+              {/* Order Bumps (Múltiplos) */}
               <div className="space-y-2">
                 <Label>Order Bumps (opcional)</Label>
                 <p className="text-sm text-muted-foreground">
@@ -391,6 +362,39 @@ const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
                   )}
                 </div>
               </div>
+
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="featured">Marcar como Destaque</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Exibe badge "Mais Vendido"
+                  </p>
+                </div>
+                <Switch
+                  id="featured"
+                  checked={formData.isFeatured}
+                  onCheckedChange={(checked) => 
+                    setFormData(prev => ({ ...prev, isFeatured: checked }))
+                  }
+                />
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="active">Pacote Ativo</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Desative para ocultar do site
+                  </p>
+                </div>
+                <Switch
+                  id="active"
+                  checked={formData.isActive}
+                  onCheckedChange={(checked) => 
+                    setFormData(prev => ({ ...prev, isActive: checked }))
+                  }
+                />
+              </div>
+            </div>
 
             {/* Actions */}
             <div className="flex gap-4">

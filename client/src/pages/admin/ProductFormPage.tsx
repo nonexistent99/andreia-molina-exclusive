@@ -14,7 +14,6 @@ export default function ProductFormPage() {
   const [, setLocation] = useLocation();
   const productId = params.id ? parseInt(params.id) : null;
   const isEdit = productId !== null;
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [loading, setLoading] = useState(isEdit);
   const [uploading, setUploading] = useState(false);
@@ -92,39 +91,6 @@ const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    // Validate file size (10MB)
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error("Imagem muito grande. Máximo 10MB");
-      return;
-    }
-
-    setUploading(true);
-    const formDataUpload = new FormData();
-    formDataUpload.append("image", file);
-    formDataUpload.append("type", "products");
-
-    try {
-      const response = await fetch("/api/admin/upload-image", {
-        method: "POST",
-        body: formDataUpload,
-      });
-
-      if (!response.ok) throw new Error("Upload failed");
-
-      const data = await response.json();
-      setFormData(prev => ({ ...prev, imageUrl: data.url }));
-      toast.success("Imagem enviada com sucesso");
-    } catch (error) {
-      console.error("Error uploading image:", error);
-      toast.error("Erro ao enviar imagem");
-    } finally {
-      setUploading(false);
-    }
-  };
-
   const handleFeatureChange = (index: number, value: string) => {
     const newFeatures = [...features];
     newFeatures[index] = value;
@@ -389,30 +355,42 @@ const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
                   </p>
                 </div>
                 <Switch
-                  id="featured"
-                  checked={formData.isFeatured}
-                  onCheckedChange={(checked) => 
-                    setFormData(prev => ({ ...prev, isFeatured: checked }))
-                  }
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label htmlFor="active">Pacote Ativo</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Desative para ocultar do site
-                  </p>
+              {/* Order Bumps (Múltiplos) */}
+              <div className="space-y-2">
+                <Label>Order Bumps (opcional)</Label>
+                <p className="text-sm text-muted-foreground">
+                  Selecione os order bumps para exibir no checkout deste pacote
+                </p>
+                <div className="space-y-2">
+                  {allOrderBumps.filter(ob => ob.isActive).map((orderBump) => (
+                    <div key={orderBump.id} className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        id={`ob-${orderBump.id}`}
+                        checked={formData.orderBumpIds.includes(orderBump.id)}
+                        onChange={(e) => {
+                          const id = orderBump.id;
+                          setFormData(prev => ({
+                            ...prev,
+                            orderBumpIds: e.target.checked
+                              ? [...prev.orderBumpIds, id]
+                              : prev.orderBumpIds.filter(obId => obId !== id),
+                          }));
+                        }}
+                        className="h-4 w-4 text-purple-600 border-gray-300 rounded"
+                      />
+                      <label htmlFor={`ob-${orderBump.id}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                        {orderBump.name} - R$ {(orderBump.priceInCents / 100).toFixed(2).replace(".", ",")}
+                      </label>
+                    </div>
+                  ))}
+                  {allOrderBumps.length === 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      Nenhum order bump cadastrado. <a href="/admin/order-bumps/new" className="text-primary underline">Criar order bump</a>
+                    </p>
+                  )}
                 </div>
-                <Switch
-                  id="active"
-                  checked={formData.isActive}
-                  onCheckedChange={(checked) => 
-                    setFormData(prev => ({ ...prev, isActive: checked }))
-                  }
-                />
               </div>
-            </div>
 
             {/* Actions */}
             <div className="flex gap-4">

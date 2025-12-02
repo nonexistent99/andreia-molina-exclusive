@@ -1,3 +1,4 @@
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -20,10 +21,10 @@ export default function Checkout() {
     customerPhone: "",
     customerDocument: "",
   });
-  const [orderBumpSelected, setOrderBumpSelected] = useState(false);
+  const [selectedOrderBumps, setSelectedOrderBumps] = useState<number[]>([]);
 
   const { data: product, isLoading } = trpc.products.getById.useQuery({ id: productId });
-  const { data: orderBump } = trpc.products.getOrderBump.useQuery(
+  const { data: orderBumps } = trpc.products.getOrderBumps.useQuery(
     { productId },
     { enabled: !!productId }
   );
@@ -44,7 +45,7 @@ export default function Checkout() {
         customerEmail: formData.customerEmail,
         customerPhone: formData.customerPhone || undefined,
         customerDocument: formData.customerDocument.replace(/\D/g, ''),
-        orderBumpId: orderBumpSelected && orderBump ? orderBump.id : undefined,
+        orderBumpId: selectedOrderBumps.length > 0 ? selectedOrderBumps[0] : undefined,
       });
 
       toast.success("Pedido criado com sucesso!");
@@ -53,6 +54,14 @@ export default function Checkout() {
       toast.error("Erro ao criar pedido. Tente novamente.");
       console.error(error);
     }
+  };
+
+  const toggleOrderBump = (orderBumpId: number) => {
+    setSelectedOrderBumps(prev =>
+      prev.includes(orderBumpId)
+        ? prev.filter(id => id !== orderBumpId)
+        : [...prev, orderBumpId]
+    );
   };
 
   if (isLoading) {
@@ -199,50 +208,54 @@ export default function Checkout() {
               </CardContent>
             </Card>
 
-            {/* Order Bump */}
-            {orderBump && orderBump.isActive && (
-              <Card className="border-2 border-primary/50 bg-gradient-to-br from-primary/5 to-primary/10">
-                <CardContent className="pt-6">
-                  <div className="flex items-start gap-4">
-                    <input
-                      type="checkbox"
-                      id="orderBump"
-                      checked={orderBumpSelected}
-                      onChange={(e) => setOrderBumpSelected(e.target.checked)}
-                      className="w-5 h-5 mt-1 cursor-pointer"
-                    />
-                    <label htmlFor="orderBump" className="flex-1 cursor-pointer">
-                      <div className="flex gap-4">
-                        {orderBump.imageUrl && (
-                          <img
-                            src={orderBump.imageUrl}
-                            alt={orderBump.name}
-                            className="w-20 h-20 object-cover rounded-lg"
-                          />
-                        )}
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <Badge variant="default" className="bg-primary">Oferta Especial</Badge>
-                            <span className="text-sm text-muted-foreground">Apenas hoje!</span>
-                          </div>
-                          <h4 className="font-bold text-lg mb-1">{orderBump.name}</h4>
-                          <p className="text-sm text-muted-foreground mb-2">{orderBump.description}</p>
-                          <div className="flex items-baseline gap-2">
-                            <span className="text-2xl font-bold text-primary">
-                              R$ {(orderBump.priceInCents / 100).toFixed(2).replace(".", ",")}
-                            </span>
-                            {orderBump.originalPriceInCents && (
-                              <span className="text-sm text-muted-foreground line-through">
-                                R$ {(orderBump.originalPriceInCents / 100).toFixed(2).replace(".", ",")}
-                              </span>
+            {/* Order Bumps (Múltiplos) */}
+            {orderBumps && orderBumps.length > 0 && (
+              <div className="space-y-4">
+                {orderBumps.filter(ob => ob.isActive).map((orderBump) => (
+                  <Card key={orderBump.id} className="border-2 border-primary/50 bg-gradient-to-br from-primary/5 to-primary/10">
+                    <CardContent className="pt-6">
+                      <div className="flex items-start gap-4">
+                        <input
+                          type="checkbox"
+                          id={`orderBump-${orderBump.id}`}
+                          checked={selectedOrderBumps.includes(orderBump.id)}
+                          onChange={() => toggleOrderBump(orderBump.id)}
+                          className="w-5 h-5 mt-1 cursor-pointer"
+                        />
+                        <label htmlFor={`orderBump-${orderBump.id}`} className="flex-1 cursor-pointer">
+                          <div className="flex gap-4">
+                            {orderBump.imageUrl && (
+                              <img
+                                src={orderBump.imageUrl}
+                                alt={orderBump.name}
+                                className="w-20 h-20 object-cover rounded-lg"
+                              />
                             )}
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <Badge variant="default" className="bg-primary">Oferta Especial</Badge>
+                                <span className="text-sm text-muted-foreground">Apenas hoje!</span>
+                              </div>
+                              <h4 className="font-bold text-lg mb-1">{orderBump.name}</h4>
+                              <p className="text-sm text-muted-foreground mb-2">{orderBump.description}</p>
+                              <div className="flex items-baseline gap-2">
+                                <span className="text-2xl font-bold text-primary">
+                                  R$ {(orderBump.priceInCents / 100).toFixed(2).replace(".", ",")}
+                                </span>
+                                {orderBump.originalPriceInCents && (
+                                  <span className="text-sm text-muted-foreground line-through">
+                                    R$ {(orderBump.originalPriceInCents / 100).toFixed(2).replace(".", ",")}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
                           </div>
-                        </div>
+                        </label>
                       </div>
-                    </label>
-                  </div>
-                </CardContent>
-              </Card>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
             )}
 
             {/* Security Badges */}
@@ -264,7 +277,7 @@ export default function Checkout() {
                     </div>
                     <div>
                       <p className="font-semibold">Seus Dados Protegidos</p>
-                      <p className="text-sm text-muted-foreground">Nunca compartilhamos suas informações</p>
+                      <p className="text-sm text-muted-foreground">Privacidade garantida</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
@@ -272,8 +285,8 @@ export default function Checkout() {
                       <Check className="w-5 h-5 text-primary" />
                     </div>
                     <div>
-                      <p className="font-semibold">Garantia de 7 Dias</p>
-                      <p className="text-sm text-muted-foreground">Devolução sem perguntas</p>
+                      <p className="font-semibold">Acesso Imediato</p>
+                      <p className="text-sm text-muted-foreground">Receba o link após o pagamento</p>
                     </div>
                   </div>
                 </div>
@@ -281,95 +294,93 @@ export default function Checkout() {
             </Card>
           </div>
 
-          {/* Order Summary */}
-          <div className="space-y-6">
-            <Card className="sticky top-4">
+          {/* Product Summary */}
+          <div>
+            <Card className="sticky top-8">
               <CardHeader>
                 <CardTitle>Resumo do Pedido</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-6">
-                {/* Product Image */}
+              <CardContent className="space-y-4">
                 {product.imageUrl && (
-                  <div className="relative h-48 rounded-lg overflow-hidden">
-                    <img 
-                      src={product.imageUrl} 
-                      alt={product.name}
-                      className="w-full h-full object-cover"
-                    />
-                    {discount > 0 && (
-                      <Badge 
-                        variant="destructive" 
-                        className="absolute top-2 left-2 text-lg font-bold"
-                      >
-                        -{discount}%
-                      </Badge>
-                    )}
-                  </div>
+                  <img
+                    src={product.imageUrl}
+                    alt={product.name}
+                    className="w-full h-48 object-cover rounded-lg"
+                  />
                 )}
-
-                {/* Product Info */}
                 <div>
-                  <h3 className="text-xl font-bold mb-2">{product.name}</h3>
-                  <p className="text-muted-foreground">{product.description}</p>
-                </div>
-
-                {/* Features */}
-                <div className="space-y-2">
-                  <p className="font-semibold">O que está incluído:</p>
-                  <ul className="space-y-2">
-                    {features.map((feature, idx) => (
-                      <li key={idx} className="flex items-start gap-2 text-sm">
-                        <Check className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
-                        <span>{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-
-                {/* Price */}
-                <div className="border-t pt-4 space-y-2">
-                  {product.originalPriceInCents && (
-                    <div className="flex justify-between text-sm text-muted-foreground">
-                      <span>Preço original:</span>
-                      <span className="line-through">
-                        R$ {(product.originalPriceInCents / 100).toFixed(2).replace(".", ",")}
-                      </span>
+                  <h3 className="font-bold text-xl mb-2">{product.name}</h3>
+                  <p className="text-muted-foreground text-sm mb-4">{product.description}</p>
+                  
+                  {features.length > 0 && (
+                    <div className="space-y-2 mb-4">
+                      <p className="font-semibold text-sm">O que está incluído:</p>
+                      <ul className="space-y-1">
+                        {features.map((feature, index) => (
+                          <li key={index} className="flex items-start gap-2 text-sm">
+                            <Check className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                            <span>{feature}</span>
+                          </li>
+                        ))}
+                      </ul>
                     </div>
                   )}
+                </div>
+
+                <div className="border-t pt-4 space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted-foreground">Subtotal</span>
+                    <span className="font-semibold">
+                      R$ {(product.priceInCents / 100).toFixed(2).replace(".", ",")}
+                    </span>
+                  </div>
+                  
+                  {selectedOrderBumps.length > 0 && orderBumps && (
+                    <>
+                      {orderBumps.filter(ob => selectedOrderBumps.includes(ob.id)).map((orderBump) => (
+                        <div key={orderBump.id} className="flex justify-between items-center text-sm">
+                          <span className="text-muted-foreground">{orderBump.name}</span>
+                          <span className="font-semibold">
+                            R$ {(orderBump.priceInCents / 100).toFixed(2).replace(".", ",")}
+                          </span>
+                        </div>
+                      ))}
+                    </>
+                  )}
+
                   {discount > 0 && (
-                    <div className="flex justify-between text-sm text-primary font-semibold">
-                      <span>Desconto ({discount}%):</span>
+                    <div className="flex justify-between items-center text-sm text-green-600">
+                      <span>Desconto ({discount}%)</span>
                       <span>
                         - R$ {((product.originalPriceInCents! - product.priceInCents) / 100).toFixed(2).replace(".", ",")}
                       </span>
                     </div>
                   )}
-                  <div className="flex justify-between text-base">
-                    <span>Subtotal:</span>
-                    <span>
-                      R$ {(product.priceInCents / 100).toFixed(2).replace(".", ",")}
-                    </span>
-                  </div>
-                  {orderBumpSelected && orderBump && (
-                    <div className="flex justify-between text-base text-primary font-semibold">
-                      <span>+ {orderBump.name}:</span>
-                      <span>
-                        R$ {(orderBump.priceInCents / 100).toFixed(2).replace(".", ",")}
-                      </span>
-                    </div>
-                  )}
-                  <div className="flex justify-between text-2xl font-bold border-t pt-2">
-                    <span>Total:</span>
-                    <span className="text-gradient-luxury">
+                </div>
+
+                <div className="border-t pt-4">
+                  <div className="flex justify-between items-center text-lg font-bold">
+                    <span>Total</span>
+                    <span className="text-primary">
                       R$ {(
-                        (product.priceInCents + (orderBumpSelected && orderBump ? orderBump.priceInCents : 0)) / 100
+                        (product.priceInCents + 
+                        (orderBumps?.filter(ob => selectedOrderBumps.includes(ob.id)).reduce((sum, ob) => sum + ob.priceInCents, 0) || 0)) / 100
                       ).toFixed(2).replace(".", ",")}
                     </span>
                   </div>
-                  <p className="text-xs text-muted-foreground text-right">
-                    Pagamento via Pix
-                  </p>
                 </div>
+
+                {product.originalPriceInCents && (
+                  <div className="bg-primary/10 rounded-lg p-4 text-center">
+                    <p className="text-sm text-muted-foreground mb-1">Preço original</p>
+                    <p className="text-lg line-through text-muted-foreground">
+                      R$ {(product.originalPriceInCents / 100).toFixed(2).replace(".", ",")}
+                    </p>
+                    <Badge variant="default" className="mt-2 bg-primary">
+                      Economize {discount}%
+                    </Badge>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>

@@ -71,7 +71,7 @@ productCrudRouter.post("/products", async (req, res) => {
       imageUrl,
       accessLink,
       features,
-      orderBumpId,
+      orderBumpIds,
       isFeatured,
       isActive,
     } = req.body;
@@ -91,6 +91,16 @@ productCrudRouter.post("/products", async (req, res) => {
       }
     }
 
+    // Parse orderBumpIds if it's a string
+    let parsedOrderBumpIds = orderBumpIds;
+    if (typeof orderBumpIds === "string") {
+      try {
+        parsedOrderBumpIds = JSON.parse(orderBumpIds);
+      } catch (e) {
+        parsedOrderBumpIds = [];
+      }
+    }
+
     await db.insert(products).values({
       name,
       description,
@@ -99,7 +109,7 @@ productCrudRouter.post("/products", async (req, res) => {
       imageUrl: imageUrl || null,
       accessLink: accessLink || null,
       features: JSON.stringify(parsedFeatures || []),
-      orderBumpId: orderBumpId ? parseInt(orderBumpId) : null,
+      orderBumpIds: JSON.stringify(parsedOrderBumpIds || []),
       isFeatured: isFeatured === true || isFeatured === "true",
       isActive: isActive === true || isActive === "true",
     });
@@ -135,7 +145,7 @@ productCrudRouter.put("/products/:id", async (req, res) => {
       imageUrl,
       accessLink,
       features,
-      orderBumpId,
+      orderBumpIds,
       isFeatured,
       isActive,
     } = req.body;
@@ -150,6 +160,16 @@ productCrudRouter.put("/products/:id", async (req, res) => {
       }
     }
 
+    // Parse orderBumpIds if it's a string
+    let parsedOrderBumpIds = orderBumpIds;
+    if (typeof orderBumpIds === "string") {
+      try {
+        parsedOrderBumpIds = JSON.parse(orderBumpIds);
+      } catch (e) {
+        parsedOrderBumpIds = [];
+      }
+    }
+
     const updateData: any = {};
     if (name !== undefined) updateData.name = name;
     if (description !== undefined) updateData.description = description;
@@ -158,7 +178,9 @@ productCrudRouter.put("/products/:id", async (req, res) => {
       updateData.originalPriceInCents = originalPriceInCents ? parseInt(originalPriceInCents) : null;
     }
     if (imageUrl !== undefined) updateData.imageUrl = imageUrl || null;
+    if (accessLink !== undefined) updateData.accessLink = accessLink || null;
     if (parsedFeatures !== undefined) updateData.features = JSON.stringify(parsedFeatures);
+    if (orderBumpIds !== undefined) updateData.orderBumpIds = JSON.stringify(parsedOrderBumpIds || []);
     if (isFeatured !== undefined) updateData.isFeatured = isFeatured === true || isFeatured === "true";
     if (isActive !== undefined) updateData.isActive = isActive === true || isActive === "true";
 

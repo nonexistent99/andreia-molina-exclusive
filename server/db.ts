@@ -336,3 +336,6 @@ export async function updateEmailLogStatus(id: number, status: EmailLog['status'
   if (errorMessage) {
     updateData.errorMessage = errorMessage;
   }
+  
+  await db.update(emailLogs).set(updateData).where(eq(emailLogs.id, id));
+}

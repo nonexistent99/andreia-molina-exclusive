@@ -53,7 +53,7 @@ export const appRouter = router({
         customerEmail: z.string().email(),
         customerPhone: z.string().optional(),
         customerDocument: z.string().min(11),
-        orderBumpId: z.number().optional(),
+        orderBumpIds: z.array(z.number()).optional(),
       }))
       .mutation(async ({ input }) => {
         // Buscar produto
@@ -65,6 +65,17 @@ export const appRouter = router({
         // Gerar número do pedido único
         const orderNumber = `ORD-${Date.now()}-${nanoid(6).toUpperCase()}`;
 
+        // Calcular valor total incluindo order bumps
+        let totalAmount = product.priceInCents;
+        if (input.orderBumpIds && input.orderBumpIds.length > 0) {
+          for (const obId of input.orderBumpIds) {
+            const orderBump = await db.getProductById(obId);
+            if (orderBump) {
+              totalAmount += orderBump.priceInCents;
+            }
+          }
+        }
+
         // Criar pedido
         const order = await db.createOrder({
           orderNumber,
@@ -73,7 +84,8 @@ export const appRouter = router({
           customerEmail: input.customerEmail,
           customerPhone: input.customerPhone || null,
           customerDocument: input.customerDocument || null,
-          amountInCents: product.priceInCents,
+          orderBumpIds: input.orderBumpIds && input.orderBumpIds.length > 0 ? JSON.stringify(input.orderBumpIds) : null,
+          amountInCents: totalAmount,
           status: "pending",
           paymentMethod: "pix",
         });

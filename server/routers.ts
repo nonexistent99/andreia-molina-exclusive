@@ -37,6 +37,12 @@ export const appRouter = router({
       .query(async ({ input }) => {
         return await db.getProductOrderBump(input.productId);
       }),
+
+    getOrderBumps: publicProcedure
+      .input(z.object({ productId: z.number() }))
+      .query(async ({ input }) => {
+        return await db.getProductOrderBumps(input.productId);
+      }),
   }),
 
   orders: router({
@@ -114,7 +120,7 @@ export const appRouter = router({
       .query(async ({ input }) => {
         return await db.getOrderByNumber(input.orderNumber);
       }),
-  }),
+
     success: publicProcedure
       .input(z.object({ orderNumber: z.string() }))
       .query(async ({ input }) => {
@@ -143,7 +149,7 @@ export const appRouter = router({
           hasOrderBump: !!order.orderBumpId,
         };
       }),
-
+  }),
 
   downloads: router({
     validate: publicProcedure

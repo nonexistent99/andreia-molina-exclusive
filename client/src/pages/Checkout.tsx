@@ -45,7 +45,7 @@ export default function Checkout() {
         customerEmail: formData.customerEmail,
         customerPhone: formData.customerPhone || undefined,
         customerDocument: formData.customerDocument.replace(/\D/g, ''),
-        orderBumpId: selectedOrderBumps.length > 0 ? selectedOrderBumps[0] : undefined,
+        orderBumpIds: selectedOrderBumps,
       });
 
       toast.success("Pedido criado com sucesso!");

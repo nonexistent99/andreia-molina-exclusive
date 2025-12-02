@@ -56,6 +56,8 @@ export const appRouter = router({
         orderBumpIds: z.array(z.number()).optional(),
       }))
       .mutation(async ({ input }) => {
+        console.log('[DEBUG orders.create] Input recebido:', JSON.stringify(input, null, 2));
+        
         // Buscar produto
         const product = await db.getProductById(input.productId);
         if (!product) {
@@ -67,11 +69,16 @@ export const appRouter = router({
 
         // Calcular valor total incluindo order bumps
         let totalAmount = product.priceInCents;
+        console.log('[DEBUG orders.create] Valor base:', totalAmount, 'centavos');
+        console.log('[DEBUG orders.create] Order bumps recebidos:', input.orderBumpIds);
         if (input.orderBumpIds && input.orderBumpIds.length > 0) {
           for (const obId of input.orderBumpIds) {
             const orderBump = await db.getProductById(obId);
             if (orderBump) {
+              console.log(`[DEBUG orders.create] Adicionando order bump ${obId}: +${orderBump.priceInCents} centavos`);
               totalAmount += orderBump.priceInCents;
+            } else {
+              console.log(`[DEBUG orders.create] Order bump ${obId} não encontrado!`);
             }
           }
         }
@@ -89,6 +96,8 @@ export const appRouter = router({
           status: "pending",
           paymentMethod: "pix",
         });
+        
+        console.log('[DEBUG orders.create] Pedido criado:', { orderNumber, amountInCents: totalAmount, orderBumpIds: input.orderBumpIds });
 
         // Enviar email de confirmação
         try {
@@ -254,6 +263,8 @@ export const appRouter = router({
           };
         }
 
+       console.log('[DEBUG payment.createPixCharge] Criando PIX para pedido:', { orderNumber: order.orderNumber, amountInCents: order.amountInCents });
+       
        const pixCharge = await lxpay.createPixCharge({
          amount: order.amountInCents,  // ✅ CORRETO: Enviar em centavos
          customerName: order.customerName,

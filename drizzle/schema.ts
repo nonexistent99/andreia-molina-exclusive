@@ -31,7 +31,7 @@ export const products = mysqlTable("products", {
   features: text("features").notNull(), // JSON string com lista de features
   isFeatured: boolean("isFeatured").default(false).notNull(),
   isActive: boolean("isActive").default(true).notNull(),
-  orderBumpId: int("orderBumpIds"), // Order bump vinculado a este produto
+  orderBumpIds: text("orderBumpIds"),
   accessLink: text("accessLink"), // Link de acesso ao conteúdo após compra
   downloadUrl: text("downloadUrl"), // URL do arquivo no S3
   fileKey: text("fileKey"), // Chave do arquivo no S3
@@ -49,7 +49,7 @@ export const orders = mysqlTable("orders", {
   id: int("id").autoincrement().primaryKey(),
   orderNumber: varchar("orderNumber", { length: 64 }).notNull().unique(),
   productId: int("productId").notNull(),
-  orderBumpId: int("orderBumpIds"),
+  orderBumpIds: text("orderBumpIds"),
   customerName: varchar("customerName", { length: 255 }).notNull(),
   customerEmail: varchar("customerEmail", { length: 320 }).notNull(),
   customerPhone: varchar("customerPhone", { length: 20 }),

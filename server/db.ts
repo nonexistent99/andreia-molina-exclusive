@@ -1,4 +1,4 @@
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { 
   InsertUser, 
@@ -134,6 +134,31 @@ export async function getProductOrderBump(productId: number) {
   const { orderBumps } = await import("../drizzle/schema");
   const result = await db.select().from(orderBumps).where(eq(orderBumps.id, product.orderBumpId)).limit(1);
   return result.length > 0 ? result[0] : null;
+}
+
+export async function getProductOrderBumps(productId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  // Buscar produto para pegar os orderBumpIds
+  const product = await getProductById(productId);
+  if (!product || !product.orderBumpIds) return [];
+  
+  // Parse orderBumpIds (que vem como string JSON)
+  let orderBumpIds: number[] = [];
+  try {
+    orderBumpIds = JSON.parse(product.orderBumpIds as string);
+  } catch {
+    return [];
+  }
+  
+  if (orderBumpIds.length === 0) return [];
+  
+  // Buscar todos os order bumps
+  const { orderBumps } = await import("../drizzle/schema");
+  
+  const result = await db.select().from(orderBumps).where(inArray(orderBumps.id, orderBumpIds));
+  return result;
 }
 
 export async function createProduct(product: InsertProduct): Promise<Product> {
@@ -311,6 +336,3 @@ export async function updateEmailLogStatus(id: number, status: EmailLog['status'
   if (errorMessage) {
     updateData.errorMessage = errorMessage;
   }
-  
-  await db.update(emailLogs).set(updateData).where(eq(emailLogs.id, id));
-}

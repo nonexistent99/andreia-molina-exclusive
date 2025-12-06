@@ -338,12 +338,16 @@ export async function handleLxpayWebhook(payload: any) {
   try {
     const webhookData = lxpay.processWebhook(payload);
     
-    // Buscar transação
-    const transaction = await db.getPaymentTransactionById(parseInt(webhookData.transactionId));
+    console.log('[Webhook] Dados processados:', webhookData);
+    
+    // Buscar transação pelo transactionId (pode ser string UUID ou número)
+    const transaction = await db.getPaymentTransactionByTransactionId(webhookData.transactionId);
     if (!transaction) {
-      console.error("Transação não encontrada:", webhookData.transactionId);
-      return;
+      console.error("Transação não encontrada para transactionId:", webhookData.transactionId);
+      throw new Error(`Transação não encontrada: ${webhookData.transactionId}`);
     }
+    
+    console.log('[Webhook] Transação encontrada:', { id: transaction.id, orderId: transaction.orderId });
 
     // Atualizar status da transação
     await db.updatePaymentTransactionStatus(
@@ -360,7 +364,7 @@ export async function handleLxpayWebhook(payload: any) {
       // Atualizar status do pedido
       await db.updateOrderStatus(order.id, "paid", webhookData.paidAt);
 
-      // Gerar link de download
+      // Gerar link de download para produto principal
       const downloadToken = nanoid(32);
       const expiresAt = new Date();
       expiresAt.setDate(expiresAt.getDate() + 30); // Expira em 30 dias
@@ -377,6 +381,33 @@ export async function handleLxpayWebhook(payload: any) {
 
       const product = await db.getProductById(order.productId);
       if (!product) return;
+
+      // Gerar links de download para order bumps se houver
+      let orderBumpIds: number[] = [];
+      if (order.orderBumpIds) {
+        try {
+          orderBumpIds = JSON.parse(order.orderBumpIds);
+        } catch (e) {
+          console.error('[Webhook] Erro ao fazer parse de orderBumpIds:', e);
+        }
+      }
+
+      // Criar links de download para cada order bump
+      for (const orderBumpId of orderBumpIds) {
+        const bumToken = nanoid(32);
+        const bumExpiresAt = new Date();
+        bumExpiresAt.setDate(bumExpiresAt.getDate() + 30);
+
+        await db.createDownloadLink({
+          orderId: order.id,
+          token: bumToken,
+          productId: orderBumpId,
+          expiresAt: bumExpiresAt,
+          downloadCount: 0,
+          maxDownloads: 3,
+          isActive: true,
+        });
+      }
 
       // Enviar email com link de download
       const downloadUrl = `${process.env.VITE_APP_URL || 'https://andreiamolina.com'}/download/${downloadToken}`;
@@ -407,6 +438,8 @@ export async function handleLxpayWebhook(payload: any) {
           status: "sent",
           brevoMessageId: emailResult.messageId,
         });
+        
+        console.log('[Webhook] Email de download enviado com sucesso para:', order.customerEmail);
       } catch (error) {
         console.error("Erro ao enviar email com link de download:", error);
         await db.createEmailLog({

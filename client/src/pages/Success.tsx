@@ -13,12 +13,18 @@ interface SuccessData {
 }
 
 export default function Success() {
-  const params = useParams<{ orderNumber: string }>();
+  const params = useParams<{ orderNumber?: string }>();
   const [data, setData] = useState<SuccessData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    loadSuccessData();
+    if (params.orderNumber) {
+      loadSuccessData();
+    } else {
+      setError("Número do pedido não fornecido");
+      setLoading(false);
+    }
   }, [params.orderNumber]);
 
   const loadSuccessData = async () => {

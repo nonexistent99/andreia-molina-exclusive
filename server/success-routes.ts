@@ -1,7 +1,7 @@
 import express from "express";
 import { getDb } from "./db";
 import { orders, products, orderBumps } from "../drizzle/schema";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 
 const router = express.Router();
 
@@ -41,17 +41,20 @@ router.get("/:orderNumber", async (req, res) => {
 
     const product = productResult[0];
 
-    // Buscar order bump se houver
-    let orderBump = null;
-    if (order.orderBumpId) {
-      const orderBumpResult = await db
-        .select()
-        .from(orderBumps)
-        .where(eq(orderBumps.id, order.orderBumpId))
-        .limit(1);
-
-      if (orderBumpResult.length > 0) {
-        orderBump = orderBumpResult[0];
+    // Buscar order bumps se houver (orderBumpIds é um JSON array)
+    let orderBumps_list = [];
+    if (order.orderBumpIds) {
+      try {
+        const orderBumpIds = JSON.parse(order.orderBumpIds);
+        if (Array.isArray(orderBumpIds) && orderBumpIds.length > 0) {
+          const orderBumpResult = await db
+            .select()
+            .from(orderBumps)
+            .where(inArray(orderBumps.id, orderBumpIds));
+          orderBumps_list = orderBumpResult;
+        }
+      } catch (e) {
+        console.error('Erro ao fazer parse de orderBumpIds:', e);
       }
     }
 
@@ -59,9 +62,9 @@ router.get("/:orderNumber", async (req, res) => {
     res.json({
       productName: product.name,
       productAccessLink: product.accessLink,
-      orderBumpName: orderBump?.name || null,
-      orderBumpAccessLink: orderBump?.accessLink || null,
-      hasOrderBump: !!orderBump,
+      orderBumpName: orderBumps_list.length > 0 ? orderBumps_list[0].name : null,
+      orderBumpAccessLink: orderBumps_list.length > 0 ? orderBumps_list[0].accessLink : null,
+      hasOrderBump: orderBumps_list.length > 0,
     });
   } catch (error) {
     console.error("Error fetching success data:", error);

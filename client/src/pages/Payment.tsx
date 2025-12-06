@@ -37,10 +37,10 @@ export default function Payment() {
     if (paymentStatus?.status === "paid") {
       toast.success("Pagamento confirmado!");
       setTimeout(() => {
-        setLocation("/success");
+        setLocation(`/success/${orderNumber}`);
       }, 2000);
     }
-  }, [paymentStatus]);
+  }, [paymentStatus, orderNumber]);
 
   const handleCreatePixCharge = async () => {
     try {

@@ -240,6 +240,14 @@ export async function getPaymentTransactionByOrderId(orderId: number): Promise<P
   return result.length > 0 ? result[0] : undefined;
 }
 
+export async function getPaymentTransactionByTransactionId(transactionId: string): Promise<PaymentTransaction | undefined> {
+  const db = await getDb();
+  if (!db) return undefined;
+  
+  const result = await db.select().from(paymentTransactions).where(eq(paymentTransactions.transactionId, transactionId)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
 export async function updatePaymentTransactionStatus(id: number, status: PaymentTransaction['status'], webhookData?: string): Promise<void> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");

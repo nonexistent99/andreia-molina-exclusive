@@ -11,6 +11,15 @@ router.post("/lxpay", async (req, res) => {
   try {
     console.log("[Webhook] Received Lxpay webhook:", req.body);
     
+    // Validar que o webhook contém os campos esperados
+    if (!req.body || !req.body.transactionId) {
+      console.warn("[Webhook] Webhook inválido - faltam campos obrigatórios");
+      return res.status(400).json({ 
+        success: false, 
+        error: "Webhook inválido - faltam campos obrigatórios" 
+      });
+    }
+    
     // Processar webhook
     await handleLxpayWebhook(req.body);
     

@@ -1,7 +1,7 @@
 import express from "express";
 import { getDb } from "./db";
-import { orders, products, orderBumps } from "../drizzle/schema";
-import { eq, inArray } from "drizzle-orm";
+import { orders, products, orderBumps, downloadLinks } from "../drizzle/schema";
+import { eq, inArray, and } from "drizzle-orm";
 
 const router = express.Router();
 
@@ -41,8 +41,28 @@ router.get("/:orderNumber", async (req, res) => {
 
     const product = productResult[0];
 
+    // Buscar link de download do produto principal
+    let productAccessLink = null;
+    const downloadLinkResult = await db
+      .select()
+      .from(downloadLinks)
+      .where(
+        and(
+          eq(downloadLinks.orderId, order.id),
+          eq(downloadLinks.productId, order.productId),
+          eq(downloadLinks.isActive, true)
+        )
+      )
+      .limit(1);
+
+    if (downloadLinkResult.length > 0) {
+      const appUrl = process.env.VITE_APP_URL || 'https://andreiamolina.com';
+      productAccessLink = `${appUrl}/download/${downloadLinkResult[0].token}`;
+    }
+
     // Buscar order bumps se houver (orderBumpIds é um JSON array)
     let orderBumps_list = [];
+    let orderBumpAccessLink = null;
     if (order.orderBumpIds) {
       try {
         const orderBumpIds = JSON.parse(order.orderBumpIds);
@@ -52,6 +72,26 @@ router.get("/:orderNumber", async (req, res) => {
             .from(orderBumps)
             .where(inArray(orderBumps.id, orderBumpIds));
           orderBumps_list = orderBumpResult;
+
+          // Buscar link de download do primeiro order bump
+          if (orderBumpIds.length > 0) {
+            const orderBumpDownloadResult = await db
+              .select()
+              .from(downloadLinks)
+              .where(
+                and(
+                  eq(downloadLinks.orderId, order.id),
+                  eq(downloadLinks.productId, orderBumpIds[0]),
+                  eq(downloadLinks.isActive, true)
+                )
+              )
+              .limit(1);
+
+            if (orderBumpDownloadResult.length > 0) {
+              const appUrl = process.env.VITE_APP_URL || 'https://andreiamolina.com';
+              orderBumpAccessLink = `${appUrl}/download/${orderBumpDownloadResult[0].token}`;
+            }
+          }
         }
       } catch (e) {
         console.error('Erro ao fazer parse de orderBumpIds:', e);
@@ -61,9 +101,9 @@ router.get("/:orderNumber", async (req, res) => {
     // Retornar dados para a página de sucesso
     res.json({
       productName: product.name,
-      productAccessLink: product.accessLink,
+      productAccessLink: productAccessLink,
       orderBumpName: orderBumps_list.length > 0 ? orderBumps_list[0].name : null,
-      orderBumpAccessLink: orderBumps_list.length > 0 ? orderBumps_list[0].accessLink : null,
+      orderBumpAccessLink: orderBumpAccessLink,
       hasOrderBump: orderBumps_list.length > 0,
     });
   } catch (error) {

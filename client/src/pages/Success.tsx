@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Check, ExternalLink, Package } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useParams } from "wouter";
+import { useParams, useLocation } from "wouter";
 
 interface SuccessData {
   productName: string;
@@ -14,9 +14,11 @@ interface SuccessData {
 
 export default function Success() {
   const params = useParams<{ orderNumber?: string }>();
+  const [, setLocation] = useLocation();
   const [data, setData] = useState<SuccessData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [redirectCountdown, setRedirectCountdown] = useState(5);
 
   useEffect(() => {
     if (params.orderNumber) {
@@ -33,6 +35,26 @@ export default function Success() {
       if (response.ok) {
         const successData = await response.json();
         setData(successData);
+        
+        // Se houver link de acesso, redirecionar automaticamente
+        if (successData.productAccessLink) {
+          // Iniciar countdown de redirecionamento
+          let countdown = 5;
+          const interval = setInterval(() => {
+            countdown--;
+            setRedirectCountdown(countdown);
+            
+            if (countdown <= 0) {
+              clearInterval(interval);
+              // Abrir o link em nova aba
+              window.open(successData.productAccessLink, "_blank");
+              // Redirecionar para home após 2 segundos
+              setTimeout(() => {
+                setLocation("/");
+              }, 2000);
+            }
+          }, 1000);
+        }
       }
     } catch (error) {
       console.error("Error loading success data:", error);
@@ -75,11 +97,23 @@ export default function Success() {
             🎉 Compra Realizada com Sucesso!
           </CardTitle>
           <CardDescription className="text-gray-300 text-lg mt-2">
-            Obrigado pela sua compra! Acesse seu conteúdo exclusivo abaixo.
+            Obrigado pela sua compra! Seu conteúdo será aberto em instantes.
           </CardDescription>
         </CardHeader>
 
         <CardContent className="space-y-6">
+          {/* Status de Redirecionamento */}
+          {data.productAccessLink && (
+            <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4 text-center">
+              <p className="text-green-300 font-semibold mb-2">
+                ⏳ Abrindo seu conteúdo em {redirectCountdown} segundos...
+              </p>
+              <p className="text-green-300/70 text-sm">
+                Se a página não abrir automaticamente, clique no botão abaixo.
+              </p>
+            </div>
+          )}
+
           {/* Botão do Pacote Principal */}
           <div className="space-y-3">
             <h3 className="text-white font-semibold flex items-center gap-2">

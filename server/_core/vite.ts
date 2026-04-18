@@ -2,7 +2,6 @@ import express, { type Express } from "express";
 import fs from "fs";
 import path from "path";
 import { Server } from "http";
-import { createServer as createViteServer } from "vite";
 
 export function serveStatic(app: Express) {
   const distPath = process.env.NODE_ENV === "production"
@@ -23,6 +22,7 @@ export function serveStatic(app: Express) {
 }
 
 export async function setupVite(app: Express, server: Server) {
+  const { createServer: createViteServer } = await import("vite");
   const vite = await createViteServer({
     server: { middlewareMode: true },
     appType: "custom",

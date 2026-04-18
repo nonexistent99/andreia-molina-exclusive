@@ -5,7 +5,7 @@ import { Server } from "http";
 
 export function serveStatic(app: Express) {
   const distPath = process.env.NODE_ENV === "production"
-    ? "/workspace/dist/public"
+    ? path.join(process.cwd(), "dist", "public")
     : path.resolve(import.meta.dirname, "../..", "dist", "public");
   
   if (!fs.existsSync(distPath)) {

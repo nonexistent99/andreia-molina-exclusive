@@ -1,6 +1,8 @@
 import express, { type Express } from "express";
 import fs from "fs";
 import path from "path";
+import { Server } from "http";
+import { createServer as createViteServer } from "vite";
 
 export function serveStatic(app: Express) {
   const distPath = process.env.NODE_ENV === "production"
@@ -20,3 +22,25 @@ export function serveStatic(app: Express) {
   });
 }
 
+export async function setupVite(app: Express, server: Server) {
+  const vite = await createViteServer({
+    server: { middlewareMode: true },
+    appType: "custom",
+  });
+  app.use(vite.middlewares);
+  app.use("*", async (req, res, next) => {
+    const url = req.originalUrl;
+    try {
+      const clientTemplate = path.resolve(
+        import.meta.dirname,
+        "../../client/index.html"
+      );
+      let template = fs.readFileSync(clientTemplate, "utf-8");
+      template = await vite.transformIndexHtml(url, template);
+      res.status(200).set({ "Content-Type": "text/html" }).end(template);
+    } catch (e) {
+      if (e instanceof Error) vite.ssrFixStacktrace(e);
+      next(e);
+    }
+  });
+}

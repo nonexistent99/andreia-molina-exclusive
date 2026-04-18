@@ -11,9 +11,7 @@ export default function Home() {
       <Header />
       <main id="hero">
         <Hero />
-        <About />
         <Packages />
-        <FAQ />
       </main>
       <Footer />
     </div>

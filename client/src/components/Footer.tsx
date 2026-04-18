@@ -31,7 +31,7 @@ export default function Footer({ modelName, instagramUrl }: FooterProps = {}) {
                 </a>
               )}
               <a 
-                href="mailto:contato@andreiamolina.com"
+                href="mailto:contato@vanessapack.com"
                 className="text-muted-foreground hover:text-primary transition-colors"
               >
                 <Mail className="w-5 h-5" />

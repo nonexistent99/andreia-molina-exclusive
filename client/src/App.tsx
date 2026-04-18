@@ -8,6 +8,7 @@ import Home from "./pages/Home";
 import Checkout from "./pages/Checkout";
 import Payment from "./pages/Payment";
 import Download from "./pages/Download";
+import Upsell from "./pages/Upsell";
 import AdminLogin from "./pages/AdminLogin";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminModelForm from "./pages/AdminModelForm";
@@ -25,6 +26,7 @@ function Router() {
       <Route path={"/"} component={Home} />
       <Route path="/checkout/:productId" component={Checkout} />
       <Route path="/payment/:orderNumber" component={Payment} />
+      <Route path="/upsell/:orderNumber" component={Upsell} />
       <Route path="/success/:orderNumber" component={Success} />
       <Route path="/download/:token" component={Download} />
       <Route path="/admin/login" component={AdminLogin} />

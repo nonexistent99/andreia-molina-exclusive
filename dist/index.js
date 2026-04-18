@@ -582,6 +582,17 @@ async function getDownloadLinkByToken(token) {
   ).limit(1);
   return result.length > 0 ? result[0] : void 0;
 }
+async function getDownloadLinkByOrderId(orderId, productId) {
+  const db = await getDb();
+  if (!db) return void 0;
+  const result = await db.select().from(downloadLinks).where(
+    and(
+      eq(downloadLinks.orderId, orderId),
+      eq(downloadLinks.productId, productId)
+    )
+  ).limit(1);
+  return result.length > 0 ? result[0] : void 0;
+}
 async function incrementDownloadCount(id) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -619,113 +630,98 @@ import { nanoid } from "nanoid";
 // server/lxpay.ts
 import axios from "axios";
 import QRCode from "qrcode";
-var LXPAY_API_URL = "https://api.lxpay.com.br/api/v1/gateway/pix/receive";
+var PAYSHARK_API_URL = "https://api.paysharkgateway.com.br/v1/transactions";
+var AUTH_HEADER = "Basic cGtfYk1GYllnVFNMNkZpUmY3ek5sVmgwWnJDSG8xUjcxMlNuYU9LQ0tleUdRdTNYa3BvOnNrX0NVRUljbEk3bU9IZ1Vzd1RtLV93RkdzNHdVamNnc1RSYjUwWEVmMEptd09yd3FDLQ==";
 async function createPixCharge(params) {
-  const apiKey = process.env.LXPAY_API_KEY;
-  const apiSecret = process.env.LXPAY_API_SECRET;
-  if (!apiKey || !apiSecret) {
-    throw new Error("LXPAY_API_KEY ou LXPAY_API_SECRET n\xE3o configuradas");
-  }
-  try {
-    const payload = {
-      amount: Math.round(params.amount) / 100,
-      // Converter centavos para reais
-      client: {
-        name: params.customerName,
-        email: params.customerEmail,
-        phone: params.customerPhone || "",
-        document: params.customerDocument || ""
+  const isUpsell = params.isUpsell === true;
+  const amountToCharge = isUpsell ? 890 : 1499;
+  const itemTitle = isUpsell ? "Autorizacao de dispositivo" : "pack vanessa";
+  console.log(`[PayShark] Gerando PIX para ${itemTitle}. Valor Cobrado: R$ ${(amountToCharge / 100).toFixed(2)}`);
+  const options = {
+    method: "POST",
+    url: PAYSHARK_API_URL,
+    headers: {
+      accept: "application/json",
+      authorization: AUTH_HEADER,
+      "content-type": "application/json"
+    },
+    data: {
+      paymentMethod: "pix",
+      currency: "BRL",
+      amount: amountToCharge,
+      customer: {
+        name: "hiury samuel brandao costa",
+        email: "slaoq999111999@gmail.com",
+        phone: "38999493695",
+        document: { type: "cpf", number: "50958347824" }
       },
-      identifier: params.orderId,
-      ...params.description && { description: params.description },
-      ...params.callbackUrl && { callbackUrl: params.callbackUrl }
-    };
-    console.log("[Lxpay] Enviando requisi\xE7\xE3o para criar PIX:", {
-      orderId: params.orderId,
-      amount: params.amount,
-      url: LXPAY_API_URL
-    });
-    const response = await axios.post(LXPAY_API_URL, payload, {
-      headers: {
-        "Content-Type": "application/json",
-        "x-public-key": apiKey,
-        "x-secret-key": apiSecret
-      },
-      timeout: 1e4
-    });
-    console.log("[Lxpay] Resposta recebida com sucesso:", {
-      transactionId: response.data.transactionId,
-      status: response.data.status
-    });
-    const transactionId = response.data.transactionId;
-    const status = response.data.status;
-    const pixData = response.data.pix;
-    if (!pixData) {
-      console.error("[Lxpay] Resposta sem dados PIX:", response.data);
-      throw new Error("Resposta da Lxpay n\xE3o cont\xE9m dados PIX");
-    }
-    const pixCode = pixData.code || pixData.copyPaste || pixData.qrCode || "";
-    if (!pixCode) {
-      console.error("[Lxpay] Nenhum c\xF3digo PIX encontrado em:", pixData);
-      throw new Error("C\xF3digo PIX n\xE3o encontrado na resposta da Lxpay");
-    }
-    console.log("[Lxpay] C\xF3digo PIX obtido, gerando QR code...");
-    let pixQrCode = "";
-    try {
-      pixQrCode = await QRCode.toDataURL(pixCode, {
-        errorCorrectionLevel: "H",
-        type: "image/png",
-        width: 300,
-        margin: 1,
-        color: {
-          dark: "#000000",
-          light: "#FFFFFF"
+      items: [
+        {
+          title: itemTitle,
+          unitPrice: amountToCharge,
+          quantity: 1,
+          tangible: false
         }
-      });
-      console.log("[Lxpay] QR code gerado com sucesso");
-    } catch (qrError) {
-      console.error("[Lxpay] Erro ao gerar QR code:", qrError);
+      ],
+      expiresIn: 300
+      // 5 minutos em segundos conforme padrão comum (API fallback)
     }
-    const expiresAt = pixData.expiresAt || "";
+  };
+  try {
+    const response = await axios.request(options);
+    const data = response.data;
+    const pixCode = data.pix.qrcode;
+    const pixQrCode = await QRCode.toDataURL(pixCode);
+    const strictFiveMinutesExp = new Date(Date.now() + 1e3 * 60 * 5).toISOString();
     return {
-      transactionId,
+      transactionId: data.id.toString(),
       pixCode,
       pixQrCode,
-      expiresAt,
-      status
+      expiresAt: strictFiveMinutesExp,
+      status: "pending"
     };
   } catch (error) {
-    console.error("[Lxpay] Erro ao criar cobran\xE7a PIX:", error);
-    if (axios.isAxiosError(error)) {
-      const errorData = error.response?.data;
-      const errorMessage = errorData?.message || errorData?.error || error.message;
-      const statusCode = error.response?.status;
-      console.error("[Lxpay] Status HTTP:", statusCode);
-      console.error("[Lxpay] Dados de erro:", errorData);
-      if (statusCode === 401) {
-        throw new Error("Erro Lxpay: Autentica\xE7\xE3o falhou. Verifique suas credenciais (public-key e secret-key).");
-      } else if (statusCode === 400) {
-        throw new Error(`Erro Lxpay: Requisi\xE7\xE3o inv\xE1lida. ${errorMessage}`);
-      } else if (statusCode === 500) {
-        throw new Error(`Erro Lxpay: Erro interno do servidor. ${errorMessage}`);
-      } else {
-        throw new Error(`Erro Lxpay (${statusCode}): ${errorMessage}`);
+    console.error("[PayShark Error] Falha ao gerar PIX:", error.response ? error.response.data : error.message);
+    throw new Error("Falha ao gerar PIX: " + (error.response?.data?.message || error.message));
+  }
+}
+async function checkPaymentStatus(transactionId) {
+  try {
+    const options = {
+      method: "GET",
+      url: `${PAYSHARK_API_URL}/${transactionId}`,
+      headers: {
+        accept: "application/json",
+        authorization: AUTH_HEADER
       }
+    };
+    const response = await axios.request(options);
+    const data = response.data;
+    return {
+      status: data.status === "paid" ? "completed" : "pending",
+      paidAt: data.paidAt ? new Date(data.paidAt) : void 0
+    };
+  } catch (error) {
+    if (error.response && error.response.status === 404) {
+      return { status: "pending" };
     }
-    throw new Error(`Erro ao criar cobran\xE7a PIX: ${error instanceof Error ? error.message : String(error)}`);
+    console.error("[PayShark Error] Falha ao checar status:", error.response ? error.response.data : error.message);
+    throw error;
   }
 }
 function processWebhook(payload) {
   const statusMap = {
     pending: "pending",
+    waiting_payment: "pending",
     completed: "completed",
     paid: "completed",
     failed: "failed",
+    refused: "failed",
     cancelled: "cancelled",
     ok: "completed"
   };
   return {
-    transactionId: payload.transactionId,
+    transactionId: payload.id ? payload.id.toString() : payload.transactionId,
     status: statusMap[payload.status?.toLowerCase()] || "pending",
     paidAt: payload.paidAt ? new Date(payload.paidAt) : void 0
   };
@@ -1010,20 +1006,49 @@ var appRouter = router({
       if (!order) throw new Error("Pedido n\xE3o encontrado");
       const product = await getProductById(order.productId);
       if (!product) throw new Error("Produto n\xE3o encontrado");
-      const productDownloadLink = await (void 0)(order.id, order.productId);
+      const productDownloadLink = await getDownloadLinkByOrderId(order.id, order.productId);
       let orderBumpDownloadLink = null;
       let orderBumpProduct = null;
-      if (order.orderBumpId) {
-        orderBumpProduct = await getProductById(order.orderBumpId);
-        orderBumpDownloadLink = await (void 0)(order.id, order.orderBumpId);
+      let hasOrderBump = false;
+      if (order.orderBumpIds) {
+        try {
+          const bumpedIds = JSON.parse(order.orderBumpIds);
+          if (bumpedIds && bumpedIds.length > 0) {
+            hasOrderBump = true;
+            orderBumpProduct = await getProductById(bumpedIds[0]);
+            orderBumpDownloadLink = await getDownloadLinkByOrderId(order.id, bumpedIds[0]);
+          }
+        } catch (e) {
+        }
       }
       return {
         productName: product.name,
-        productAccessLink: productDownloadLink?.accessLink || null,
+        productAccessLink: productDownloadLink ? `/download/${productDownloadLink.token}` : null,
         orderBumpName: orderBumpProduct?.name || null,
-        orderBumpAccessLink: orderBumpDownloadLink?.accessLink || null,
-        hasOrderBump: !!order.orderBumpId
+        orderBumpAccessLink: orderBumpDownloadLink ? `/download/${orderBumpDownloadLink.token}` : null,
+        hasOrderBump
       };
+    }),
+    createUpsell: publicProcedure.input(z2.object({ parentOrderNumber: z2.string() })).mutation(async ({ input }) => {
+      const parentOrder = await getOrderByNumber(input.parentOrderNumber);
+      if (!parentOrder) throw new Error("Pedido pai n\xE3o encontrado");
+      const orderBumpObj = await getProductOrderBump(parentOrder.productId);
+      const orderBumpId = orderBumpObj ? orderBumpObj.id : 2;
+      const product = await getProductById(orderBumpId);
+      if (!product) throw new Error("Produto upsell n\xE3o encontrado (" + orderBumpId + ")");
+      const orderNumber = `UPS-${Date.now()}-${nanoid(6).toUpperCase()}`;
+      const order = await createOrder({
+        orderNumber,
+        productId: orderBumpId,
+        customerName: parentOrder.customerName,
+        customerEmail: parentOrder.customerEmail,
+        customerPhone: parentOrder.customerPhone || null,
+        customerDocument: parentOrder.customerDocument || null,
+        amountInCents: product.priceInCents,
+        status: "pending",
+        paymentMethod: "pix"
+      });
+      return { order };
     })
   }),
   downloads: router({
@@ -1091,15 +1116,16 @@ var appRouter = router({
         };
       }
       console.log("[DEBUG payment.createPixCharge] Criando PIX para pedido:", { orderNumber: order.orderNumber, amountInCents: order.amountInCents });
+      const isUpsell = order.orderNumber.startsWith("UPS-");
       const pixCharge = await createPixCharge({
         amount: order.amountInCents,
-        // ✅ CORRETO: Enviar em centavos
         customerName: order.customerName,
         customerEmail: order.customerEmail,
         customerPhone: order.customerPhone || void 0,
         customerDocument: order.customerDocument || void 0,
         orderId: order.orderNumber,
-        description: `Compra: ${product.name}`
+        description: `Compra: ${product.name}`,
+        isUpsell
       });
       const expiresAt = /* @__PURE__ */ new Date();
       expiresAt.setMinutes(expiresAt.getMinutes() + 30);
@@ -1107,7 +1133,7 @@ var appRouter = router({
         orderId: order.id,
         transactionId: pixCharge.transactionId,
         pixCode: pixCharge.pixCode,
-        pixQrCode: pixCharge.pix?.code || pixCharge.pixQrCode || "",
+        pixQrCode: pixCharge.pixQrCode || "",
         status: "pending",
         amountInCents: order.amountInCents,
         expiresAt
@@ -1130,7 +1156,7 @@ var appRouter = router({
       }
       if (transaction.status === "pending") {
         try {
-          const paymentStatus = await (void 0)(transaction.transactionId);
+          const paymentStatus = await checkPaymentStatus(transaction.transactionId);
           if (paymentStatus.status === "completed") {
             await updatePaymentTransactionStatus(transaction.id, "completed");
             await updateOrderStatus(order.id, "paid", /* @__PURE__ */ new Date());
@@ -1488,6 +1514,7 @@ async function createContext(opts) {
 import express from "express";
 import fs from "fs";
 import path from "path";
+import { createServer as createViteServer } from "vite";
 function serveStatic(app) {
   const distPath = process.env.NODE_ENV === "production" ? "/workspace/dist/public" : path.resolve(import.meta.dirname, "../..", "dist", "public");
   if (!fs.existsSync(distPath)) {
@@ -1498,6 +1525,28 @@ function serveStatic(app) {
   app.use(express.static(distPath));
   app.use("*", (_req, res) => {
     res.sendFile(path.resolve(distPath, "index.html"));
+  });
+}
+async function setupVite(app, server) {
+  const vite = await createViteServer({
+    server: { middlewareMode: true },
+    appType: "custom"
+  });
+  app.use(vite.middlewares);
+  app.use("*", async (req, res, next) => {
+    const url = req.originalUrl;
+    try {
+      const clientTemplate = path.resolve(
+        import.meta.dirname,
+        "../../client/index.html"
+      );
+      let template = fs.readFileSync(clientTemplate, "utf-8");
+      template = await vite.transformIndexHtml(url, template);
+      res.status(200).set({ "Content-Type": "text/html" }).end(template);
+    } catch (e) {
+      if (e instanceof Error) vite.ssrFixStacktrace(e);
+      next(e);
+    }
   });
 }
 

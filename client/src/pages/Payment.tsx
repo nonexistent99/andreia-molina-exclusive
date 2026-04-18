@@ -37,7 +37,13 @@ export default function Payment() {
     if (paymentStatus?.status === "paid") {
       toast.success("Pagamento confirmado!");
       setTimeout(() => {
-        setLocation(`/success/${orderNumber}`);
+        if (orderNumber.startsWith("UPS-")) {
+          const searchParams = new URLSearchParams(window.location.search);
+          const parentOrder = searchParams.get("parent");
+          setLocation(`/success/${parentOrder || orderNumber}`);
+        } else {
+          setLocation(`/upsell/${orderNumber}`);
+        }
       }, 2000);
     }
   }, [paymentStatus, orderNumber]);
@@ -100,21 +106,42 @@ export default function Payment() {
     );
   }
 
-  const timeRemaining = pixData ? Math.max(0, Math.floor((pixData.expiresAt.getTime() - Date.now()) / 1000 / 60)) : 30;
+  const [timeRemaining, setTimeRemaining] = useState<number>(300); // 5 min default
+
+  useEffect(() => {
+    if (!pixData) return;
+    
+    const interval = setInterval(() => {
+      const remainingSeconds = Math.max(0, Math.floor((pixData.expiresAt.getTime() - Date.now()) / 1000));
+      setTimeRemaining(remainingSeconds);
+      
+      if (remainingSeconds === 0) {
+        clearInterval(interval);
+      }
+    }, 1000);
+    
+    return () => clearInterval(interval);
+  }, [pixData]);
+
+  const formatTime = (seconds: number) => {
+    const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+    const s = (seconds % 60).toString().padStart(2, '0');
+    return `${m}:${s}`;
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/20 py-12">
       <div className="container max-w-4xl">
         <div className="text-center mb-8">
-          <Badge className="mb-4 bg-gradient-luxury text-white border-0">
-            <Clock className="w-4 h-4 mr-1" />
-            {timeRemaining} minutos restantes
+          <Badge className="mb-4 bg-gradient-luxury text-white border-0 text-lg py-1.5 px-4 animate-pulse">
+            <Clock className="w-5 h-5 mr-2" />
+            Pagamento Expira em: {formatTime(timeRemaining)}
           </Badge>
           <h1 className="text-3xl md:text-4xl font-bold mb-2">
             Finalize Seu <span className="text-gradient-luxury">Pagamento</span>
           </h1>
           <p className="text-muted-foreground">
-            Pedido: <strong>{order.orderNumber}</strong>
+            Pedido: <strong>{order.orderNumber}</strong> | Restam {orderNumber.startsWith("UPS") ? "2 vagas" : "3 vagas"}  neste lote
           </p>
         </div>
 

@@ -92,7 +92,7 @@ export default function FAQ() {
             Não encontrou a resposta que procurava?
           </p>
           <a 
-            href="mailto:contato@andreiamolina.com" 
+            href="mailto:contato@vanessapack.com" 
             className="text-primary hover:text-primary/80 font-semibold text-lg underline"
           >
             Entre em contato conosco

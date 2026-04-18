@@ -61,8 +61,8 @@ router.get("/:orderNumber", async (req, res) => {
     }
 
     // Buscar order bumps se houver (orderBumpIds é um JSON array)
-    let orderBumps_list = [];
-    let orderBumpAccessLink = null;
+    let orderBumps_list: any[] = [];
+    let orderBumpAccessLink: string | null = null;
     if (order.orderBumpIds) {
       try {
         const orderBumpIds = JSON.parse(order.orderBumpIds);

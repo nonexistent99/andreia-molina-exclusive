@@ -293,6 +293,19 @@ export async function getDownloadLinkByToken(token: string): Promise<DownloadLin
   return result.length > 0 ? result[0] : undefined;
 }
 
+export async function getDownloadLinkByOrderId(orderId: number, productId: number): Promise<DownloadLink | undefined> {
+  const db = await getDb();
+  if (!db) return undefined;
+  
+  const result = await db.select().from(downloadLinks).where(
+    and(
+      eq(downloadLinks.orderId, orderId),
+      eq(downloadLinks.productId, productId)
+    )
+  ).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
 export async function incrementDownloadCount(id: number): Promise<void> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");

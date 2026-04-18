@@ -153,22 +153,58 @@ export const appRouter = router({
 
         // Busca o link de download do produto principal
         const productDownloadLink = await db.getDownloadLinkByOrderId(order.id, order.productId);
-
-        // Lógica para Order Bump (assumindo que o sistema ainda só suporta 1)
+        
         let orderBumpDownloadLink = null;
         let orderBumpProduct = null;
-        if (order.orderBumpId) {
-          orderBumpProduct = await db.getProductById(order.orderBumpId);
-          orderBumpDownloadLink = await db.getDownloadLinkByOrderId(order.id, order.orderBumpId);
+        
+        let hasOrderBump = false;
+        if (order.orderBumpIds) {
+          try {
+            const bumpedIds = JSON.parse(order.orderBumpIds);
+            if (bumpedIds && bumpedIds.length > 0) {
+              hasOrderBump = true;
+              orderBumpProduct = await db.getProductById(bumpedIds[0]);
+              orderBumpDownloadLink = await db.getDownloadLinkByOrderId(order.id, bumpedIds[0]);
+            }
+          } catch(e) {}
         }
 
         return {
           productName: product.name,
-          productAccessLink: productDownloadLink?.accessLink || null,
+          productAccessLink: productDownloadLink ? `/download/${productDownloadLink.token}` : null,
           orderBumpName: orderBumpProduct?.name || null,
-          orderBumpAccessLink: orderBumpDownloadLink?.accessLink || null,
-          hasOrderBump: !!order.orderBumpId,
+          orderBumpAccessLink: orderBumpDownloadLink ? `/download/${orderBumpDownloadLink.token}` : null,
+          hasOrderBump: hasOrderBump,
         };
+      }),
+
+    createUpsell: publicProcedure
+      .input(z.object({ parentOrderNumber: z.string() }))
+      .mutation(async ({ input }) => {
+        const parentOrder = await db.getOrderByNumber(input.parentOrderNumber);
+        if (!parentOrder) throw new Error("Pedido pai não encontrado");
+
+        const orderBumpObj = await db.getProductOrderBump(parentOrder.productId);
+        const orderBumpId = orderBumpObj ? orderBumpObj.id : 2; // Fallback to 2 assuming it's the order bump ID
+
+        const product = await db.getProductById(orderBumpId);
+        if (!product) throw new Error("Produto upsell não encontrado (" + orderBumpId + ")");
+
+        const orderNumber = `UPS-${Date.now()}-${nanoid(6).toUpperCase()}`;
+
+        const order = await db.createOrder({
+          orderNumber,
+          productId: orderBumpId,
+          customerName: parentOrder.customerName,
+          customerEmail: parentOrder.customerEmail,
+          customerPhone: parentOrder.customerPhone || null,
+          customerDocument: parentOrder.customerDocument || null,
+          amountInCents: product.priceInCents,
+          status: "pending",
+          paymentMethod: "pix",
+        });
+
+        return { order };
       }),
   }),
 
@@ -265,14 +301,16 @@ export const appRouter = router({
 
        console.log('[DEBUG payment.createPixCharge] Criando PIX para pedido:', { orderNumber: order.orderNumber, amountInCents: order.amountInCents });
        
+       const isUpsell = order.orderNumber.startsWith("UPS-");
        const pixCharge = await lxpay.createPixCharge({
-         amount: order.amountInCents,  // ✅ CORRETO: Enviar em centavos
+         amount: order.amountInCents, 
          customerName: order.customerName,
          customerEmail: order.customerEmail,
          customerPhone: order.customerPhone || undefined,
          customerDocument: order.customerDocument || undefined,
          orderId: order.orderNumber,
          description: `Compra: ${product.name}`,
+         isUpsell: isUpsell
       });
 
 
@@ -284,7 +322,7 @@ export const appRouter = router({
           orderId: order.id,
           transactionId: pixCharge.transactionId,
           pixCode: pixCharge.pixCode,
-          pixQrCode: pixCharge.pix?.code || pixCharge.pixQrCode || "", 
+          pixQrCode: pixCharge.pixQrCode || "", 
           status: "pending",
           amountInCents: order.amountInCents,
           expiresAt,

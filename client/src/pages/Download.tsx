@@ -193,7 +193,7 @@ export default function Download() {
             Problemas com o download?
           </p>
           <a 
-            href="mailto:suporte@andreiamolina.com" 
+            href="mailto:suporte@vanessapack.com" 
             className="text-primary hover:text-primary/80 font-semibold underline"
           >
             Entre em contato com o suporte
